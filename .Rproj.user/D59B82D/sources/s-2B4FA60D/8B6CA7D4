@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1642951453526.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "8B6CA7D4",
+    "lastKnownWriteTime" : 1642938170,
+    "last_content_update" : 1642938170,
+    "path" : "D:/Gu_lab/space_expr/code/TIST/TIST/TIST/R/funcs.R",
+    "project_path" : "R/funcs.R",
+    "properties" : {
+        "cursorPosition" : "76,15",
+        "scrollLine" : "46"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

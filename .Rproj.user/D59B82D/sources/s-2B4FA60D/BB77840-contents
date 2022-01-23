@@ -1,0 +1,1240 @@
+options(stringsAsFactors = F )
+library(plyr)
+library(network)
+library(tidygraph)
+library(igraph)
+library(ggraph)
+library(scales)
+library(STRINGdb)
+library(Seurat)
+library(progress)
+library(lattice)
+#library(tidyverse)
+library(ggplot2)
+library(Matrix)
+#library(Rmisc)
+library(ggforce)
+library(VennDiagram)
+library(rjson)
+library(cowplot)
+library(RColorBrewer)
+library(grid)
+library(sp)
+
+#library(readbitmap)
+library(ggExtra)
+library(reshape2)
+library(gridExtra)
+library(sctransform)
+library(pheatmap)
+library(Hmisc)#¼ÓÔØ°ü
+library(magick)
+library(imager)
+library(seewave)
+library(MASS)
+library(NbClust)
+library(clv)
+library(SPARK)
+library(parallel)
+library(doParallel)
+library(foreach)
+library(pracma)
+library(CompQuadForm)
+library(philentropy)
+library(data.table)
+#cell interaction
+library(CellChat)
+library(ggplot2)
+library(ggalluvial)
+library(svglite)
+library(Seurat)
+library(mindr)
+library(NMF)
+
+setwd("D:/Gu_lab/space_expr/code/Metacell/R/")
+source("Meta_ST_supervised.R")
+source("utils.R")
+source("Meta_ST_img.R")
+source("Meta_ST_semisupervised.R")
+source("Meta_ST_unsupervised.R")
+source("Meta_ST_SNN.R")
+source("funcs.R")
+source("Features_score.R")
+source("result_plot.R")
+source("Res_net.R")
+source("MD_recluster.R")
+source("SPARK.R")
+source("SpaceDiffGene.R")
+source("cell_interaction.R")
+#for Mouse Brain
+
+Maskfile <- "D:/Gu_lab/space_expr/data/pubdata/V1_Adult_Mouse_Brain/spatial/Imginit/mask1.txt"
+imagefile <- "D:/Gu_lab/space_expr/data/pubdata/V1_Adult_Mouse_Brain/spatial/tissue_hires_image.png"
+savePath <- "D:/Gu_lab/space_expr/data/pubdata/V1_Adult_Mouse_Brain/metacell_results/"
+spaceFile <- "D:/Gu_lab/space_expr/data/pubdata/V1_Adult_Mouse_Brain/spatial/tissue_positions_list.csv"
+barcodefile = "D:/Gu_lab/space_expr/data/pubdata/V1_Adult_Mouse_Brain/spatial/Imginit/barcodes.tsv"
+exprPath = "D:/Gu_lab/space_expr/data/pubdata/V1_Adult_Mouse_Brain/filtered_feature_bc_matrix/"
+
+sacle_score <- 0.17011142
+Spot_manifest_imgunsup <- readRDS(paste0(savePath,"Spot_manifest_imgunsup.RDS"))
+SC_obj_file <- paste0(savePath,"expr_obj.RDS")
+MC_obj_file <- paste0(savePath,"Mc_obj.RDS")
+MC_ident_file <- paste0(savePath,"MC_idents.RDS")
+netfile <- paste0(savePath,"ST_imgunsupnet.RDS")
+MD_marker_file <- paste0(savePath,"Mc_markers.RDS")
+
+SC_obj <- readRDS(SC_obj_file)
+SC_obj <- NormalizeData(SC_obj)
+SC_obj <- FindVariableFeatures(SC_obj)
+SC_obj <- ScaleData(SC_obj)
+SC_obj <- RunPCA(SC_obj)
+ElbowPlot(SC_obj)
+SC_obj <- FindNeighbors(SC_obj,dims = 1:20)
+
+SC_obj <- RunUMAP(SC_obj,dims = 1:20)
+DimPlot(SC_obj)
+Spot_manifest <- cbind(Spot_manifest_imgunsup,Idents(SC_obj),SC_obj@reductions$umap@cell.embeddings)
+colnames(Spot_manifest)[8] <- "MC_name"
+
+saveRDS(SC_obj,file = paste0(savePath,"SC_obj.RDS"))
+
+
+
+par(mar=c(10,0.5,0.5,0.5))
+Mc_manifest <- readRDS(paste0(savePath,"Mc_manifest.RDS"))
+cols <- array(getDefaultColors(length(table(Spot_manifest$Walktrap_id))))
+rownames(cols) <- Mc_manifest$mc_names
+
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = UMAP_1, y = UMAP_2, color = MC_name)) + geom_point(size = 1.5) + 
+  scale_colour_manual(values = cols) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/UMAP.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+SC_obj <- FindClusters(SC_obj,resolution = 0.4)
+
+col <- array(getDefaultColors(length(table(Idents(SC_obj)))))
+rownames(col) <-names(table(Idents(SC_obj)))
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = imagecol, y =-imagerow, color = Idents(SC_obj))) + geom_point(size = 2) + 
+  scale_colour_manual(values = col) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/SNN_Cluster.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = UMAP_1, y = UMAP_2, color =Idents(SC_obj) )) + geom_point(size = 1.5) + 
+  scale_colour_manual(values = col) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/UMAP_SNN.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+
+#edit img
+savePath_ <- c("D:/Gu_lab/space_expr/data/pubdata/V1_Human_Heart/metacell_results/",
+               "D:/Gu_lab/space_expr/data/pubdata/V1_Human_Lymph_Node/metacell_results/",
+               "D:/Gu_lab/space_expr/data/pubdata/V1_Mouse_Brain_Sagittal_Anterior/metacell_results/",
+               "D:/Gu_lab/space_expr/data/pubdata/V1_Mouse_Brain_Sagittal_Posterior/metacell_results/",
+               "D:/Gu_lab/space_expr/data/pubdata/V1_Mouse_Kidney/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/084717_A/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/084717_B/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/084717_C/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/084717_D/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/2006524_M/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/2006582_M/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/2006654_M/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/2006735_M/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/cHC-1L/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/cHC-1N/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/cHC-1T/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-1L/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-1N/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-1T/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-2L/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-2N/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-2P/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-2T/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-3L/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-3N/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-3T/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-4L/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-4N/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-4T/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-6L/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-6N/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-6T/outs/metacell_results/",
+               "D:/Gu_lab/space_expr/data/Our_data/ICC-1L/outs/metacell_results/",
+               "D:/Gu_lab/Liver/Data/ST_data/72HB/outs/metacell_results/",
+               "D:/Gu_lab/Liver/Data/ST_data/40H/outs/metacell_results/",
+               "D:/Gu_lab/Liver/Data/ST_data/D7B_new/metacell_results/",
+               "D:/Gu_lab/Liver/Data/ST_data/0HB_new/metacell_results/",
+               "D:/Gu_lab/Liver/Data/ST_data/0HB/outs/metacell_results/"
+)
+
+
+Maskfile_ <- c("D:/Gu_lab/space_expr/data/pubdata/V1_Human_Heart/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/pubdata/V1_Human_Lymph_Node/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/pubdata/V1_Mouse_Brain_Sagittal_Anterior/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/pubdata/V1_Mouse_Brain_Sagittal_Posterior/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/pubdata/V1_Mouse_Kidney/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/084717_A/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/084717_B/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/084717_C/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/084717_D/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/2006524_M/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/2006582_M/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/2006654_M/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/2006735_M/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/cHC-1L/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/cHC-1N/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/cHC-1T/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-1L/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-1N/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-1T/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-2L/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-2N/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-2P/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-2T/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-3L/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-3N/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-3T/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-4L/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-4N/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-4T/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-6L/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-6N/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/HCC-6T/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/space_expr/data/Our_data/ICC-1L/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/Liver/Data/ST_data/72HB/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/Liver/Data/ST_data/40H/outs/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/Liver/Data/ST_data/D7B_new/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/Liver/Data/ST_data/0HB_new/spatial/Imginit/mask1.txt",
+               "D:/Gu_lab/Liver/Data/ST_data/0HB/outs/spatial/Imginit/mask1.txt"
+               
+)
+imagefile_ <- c("D:/Gu_lab/space_expr/data/pubdata/V1_Human_Heart/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/pubdata/V1_Human_Lymph_Node/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/pubdata/V1_Mouse_Brain_Sagittal_Anterior/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/pubdata/V1_Mouse_Brain_Sagittal_Posterior/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/pubdata/V1_Mouse_Kidney/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/084717_A/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/084717_B/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/084717_C/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/084717_D/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/2006524_M/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/2006582_M/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/2006654_M/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/2006735_M/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/cHC-1L/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/cHC-1N/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/cHC-1T/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-1L/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-1N/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-1T/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-2L/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-2N/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-2P/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-2T/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-3L/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-3N/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-3T/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-4L/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-4N/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-4T/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-6L/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-6N/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/HCC-6T/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/space_expr/data/Our_data/ICC-1L/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/Liver/Data/ST_data/72HB/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/Liver/Data/ST_data/40H/outs/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/Liver/Data/ST_data/D7B_new/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/Liver/Data/ST_data/0HB_new/spatial/tissue_hires_image.png",
+                "D:/Gu_lab/Liver/Data/ST_data/0HB/outs/spatial/tissue_hires_image.png"
+)
+
+for( i in 1:length(savePath_)){
+  tm <- savePath_[i]
+  #img <- load.image(paste0(tm,"edge_img.png"))
+  img <- load.image(imagefile_[i])
+  #image_info(img)
+  Mask <- read.table(file = Maskfile_[i],sep = ',')
+  Mask <- as.matrix(Mask)
+  Mask <- as.cimg(t(Mask))
+  img_m <- img
+  R(img_m) <-R(img_m)*Mask
+  G(img_m) <-G(img_m)*Mask
+  B(img_m) <-B(img_m)*Mask
+  img <- img_m
+  tmid <- which(R(img)==0&G(img)==0&B(img)==0)
+  R(img)[tmid] = 1.0
+  G(img)[tmid] = 1.0
+  B(img)[tmid] = 1.0
+  
+  png(paste0(tm,"edge_img_.png"))
+  plot(img)
+  dev.off()
+}
+
+
+#show noise
+
+
+
+
+exprPath <- "D:/Gu_lab/space_expr/data/Our_data/084717_D/raw_feature_bc_matrix/"
+exprPath
+expr_obj <- Read10X(data.dir = exprPath)
+savePath <- exprPath
+expr_obj <- CreateSeuratObject(counts = expr_obj,min.cells = 0,min.features = 0)
+#SC_obj_file <- "D:/Gu_lab/space_expr/data/Our_data/HCC-1N/outs/metacell_results/"
+#tm_obj <- readRDS(SC_obj_file)
+
+tm_obj <- Read10X(data.dir = "D:/Gu_lab/space_expr/data/Our_data/084717_D/filtered_feature_bc_matrix/")
+tm_obj <- CreateSeuratObject(counts = tm_obj,min.cells = 0,min.features = 0)
+#tm_obj <- CreateSeuratObject(counts = tm_obj,min.cells = 0,min.features = 0)
+median(tm_obj$nFeature_RNA)
+spaceFile <- "D:/Gu_lab/space_expr/data/Our_data/084717_D/spatial/tissue_positions_list.csv"
+Spot_space <- read.csv(file = spaceFile,header = F)
+sel.cols <- c("barcode","tissue", "row", "col", "imagerow", "imagecol")
+colnames(Spot_space) <- sel.cols
+Spot_manifest <- Spot_space
+tm <- data.frame(barcode = rownames(expr_obj@meta.data),nCount = expr_obj@meta.data$nCount_RNA)
+Spot_manifest <- merge(Spot_manifest,tm,by.x = "barcode",by.y = "barcode")
+colnames(Spot_manifest)[7] <- "nCount"
+sum(Spot_manifest[-which(Spot_manifest$barcode%in%colnames(tm_obj)),"nCount"])/sum(Spot_manifest[,"nCount"])
+
+#####Spotmanifest plot
+
+Spot_manifest_ <- Spot_manifest[-which(Spot_manifest$barcode%in%colnames(tm_obj)),]
+
+pltdat <- cbind.data.frame(Spot_manifest_[, c("imagerow","imagecol","nCount")])
+colnames(pltdat)[1:2] <- c("y","x")
+pltdat$y = -pltdat$y
+pd <- pltdat
+
+
+xpand = 0
+ypand = 1
+pd$nCount[which(pd$nCount>20000)] = 20000
+pal <- colorRampPalette(c('#372781','#E52320')) 
+gpt <- ggplot(pd, aes(x = x, y = y, color = nCount)) + geom_point(size = 2) + 
+  # scale_color_gradientn(colours=pal(5))+
+  scale_color_gradientn(colours = pal(5)) + scale_x_discrete(expand = c(xpand, 
+                                                                        ypand)) + scale_y_discrete(expand = c(xpand, ypand)) + coord_equal() + 
+  # labs(title = colnames(pd)[igene+2], x = NULL, y = NULL)+
+  theme_bw()
+
+
+
+x_o <- log10(as.vector(Spot_manifest[-which(Spot_manifest$barcode%in%colnames(tm_obj)),"nCount"]+0.1))
+res_o <- fitdistr(x_o,"lognormal")
+observed_hist <- hist(x_o,breaks = 10)
+xfit <-seq(min(x_o), max(x_o), by=(max(x_o)-min(x_o))/length(x_o))
+yfit_o <-dlnorm(xfit,res_o[[1]][1], res_o[[1]][2])
+yfit_o <- yfit_o*diff(observed_hist$mids[1:2])*length(xfit)
+lines(xfit, yfit_o, col="blue", lwd=2)
+l_o <- yfit_o - 1
+u_o <- yfit_o + 1
+
+x_e <- log10(as.vector(Spot_manifest[which(Spot_manifest$barcode%in%colnames(tm_obj)),"nCount"]+0.1))
+res_e <- fitdistr(x_e,"lognormal")
+expected_hist <- hist(x_e,breaks = 10)
+yfit_e <-dlnorm(xfit,res_e[[1]][1], res_e[[1]][2])
+yfit_e <- yfit_e*diff(expected_hist$mids[1:2])*length(xfit)
+lines(xfit, yfit_e, col="blue", lwd=2)
+l_e <- yfit_e - 1
+u_e <- yfit_e + 1
+mashi_dis <- mashi(a = yfit_e,b = yfit_o)
+KL_dis <- kl.dist(yfit_e,yfit_o)$D
+dat_plot_spot<- data.frame(xfit, yfit_o, l_o, u_o, yfit_e,l_e,u_e)
+
+local <- Spot_manifest$barcode
+local[-which(Spot_manifest$barcode%in%colnames(tm_obj))] <- "backgroud"
+local[which(Spot_manifest$barcode%in%colnames(tm_obj))] <- "sample"
+df <- data.frame(count = log10(Spot_manifest[,"nCount"]),local <- local)
+p <- ggplot(df, aes(x = count,fill = local,color = local)) +
+  geom_histogram(alpha = 0.5,position = "identity")+
+  geom_density(alpha = 0.6)+
+  scale_fill_manual(values = c("#DECBE4", "#B3CDE3"))+
+  ggplot_config(base.size = 6)+
+  theme(panel.grid = element_blank(),
+        legend.position = "top",                      
+        panel.border = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(x = "nCounts", y = "Spot num",color = "", fill = "")
+
+ggsave(filename = paste0(savePath,"hist_kernal_log.png"),
+       p, width = 6, height = 5, dpi = 150, limitsize = FALSE)
+
+
+p <- ggplot(df, aes(x = count,fill = local,color = local)) +
+  geom_histogram(alpha = 0.5,position = "identity",aes(y=..density..))+
+  geom_density(alpha = 0.6)+
+  scale_fill_manual(values = c("#DECBE4", "#B3CDE3"))+
+  ggplot_config(base.size = 6)+
+  theme(panel.grid = element_blank(),
+        legend.position = "top",                      
+        panel.border = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(x = "nCounts", y = "Spot num",color = "", fill = "")
+
+brewer.pal(9, "Pastel1")
+p <- ggplot(dat_plot_spot, aes(x = xfit)) +
+  geom_ribbon(aes(ymin = l_e, ymax = u_e, fill = "sample"), col="Black",alpha = 1) +
+  geom_ribbon(aes(ymin = l_o, ymax = u_o, fill = "backgroud") ,col="Black",alpha = 1) +
+  geom_area(aes(y = yfit_o, fill = "backgroud"),alpha = 0.8)+ 
+  geom_area(aes(y = yfit_e, fill = "sample"),alpha = 0.8)  + 
+  scale_fill_manual(values = c("#DECBE4", "#B3CDE3"))+
+  ggplot_config(base.size = 6)+
+  theme(panel.grid = element_blank(),
+        legend.position = "top",                      
+        panel.border = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(x = "nCounts", y = "Spot num",color = "", fill = "")
+
+ ggsave(filename = paste0(savePath,"hist_kernal_log.png"),
+        p, width = 6, height = 5, dpi = 150, limitsize = FALSE)
+
+ 
+ p <- ggplot(dat_plot_spot, aes(x = xfit)) +
+   geom_ribbon(aes(ymin = l_o, ymax = u_o, fill = "backgroud") ,col="Black",alpha = 1) +
+   geom_ribbon(aes(ymin = l_e, ymax = u_e, fill = "sample"), col="Black",alpha = 1) +
+   geom_area(aes(y = yfit_o, fill = "backgroud"),alpha = 0.8)+ 
+   geom_area(aes(y = yfit_e, fill = "sample"),alpha = 0.8)  + 
+   scale_fill_manual(values = c("#DECBE4", "#B3CDE3"))+
+   ggplot_config(base.size = 6)+
+   theme(panel.grid = element_blank(),
+         legend.position = "top",                      
+         panel.border = element_blank(),
+         plot.title = element_text(hjust = 0.5)) +
+   labs(x = "nCounts", y = "Spot num",color = "", fill = "")
+ 
+ ggsave(filename = paste0(savePath,"hist_kernal.png"),
+        p, width = 6, height = 5, dpi = 150, limitsize = FALSE)
+ colnames(df) <- c("count","local")
+ p <-ggplot(df, aes(x = count,fill = local,color = local)) +
+      geom_histogram(alpha = 0.5,position = "identity",bins=70)+
+      geom_density(alpha = 0.6)+
+      scale_fill_manual(values = c("#E41A1C" ,"#377EB8"))+
+      ggplot_config(base.size = 6)+
+      theme(panel.grid = element_blank(),
+                      legend.position = "top",                      
+                      panel.border = element_blank(),
+                      plot.title = element_text(hjust = 0.5)) +
+      labs(x = "nCounts", y = "Spot num",color = "", fill = "")
+ ggsave(filename = paste0(savePath,"dftest.pdf"),
+        p, width = 6, height = 5, dpi = 150, limitsize = FALSE)
+
+ 
+ Spot_manifest[(which(Spot_manifest[,"nCount"]>10000)),"nCount"] = 10000
+ST_meta_plot <- ggplot(Spot_manifest[-which(Spot_manifest$barcode%in%colnames(tm_obj)),], aes(x = imagecol, y = -imagerow,fill = nCount))+
+  geom_point(shape = 21, size = 3.5, stroke = 0.2, color = "lightgrey") +
+  scale_fill_continuous(low="#000099", high="#FF0000", space='Lab')+
+  scale_x_discrete(expand = c(0.09,0.09))+
+  scale_y_discrete(expand = c(0.09,0.09))+
+  coord_equal()+
+  theme_bw() +
+  xlab("x") + ylab("y")+ theme(legend.position = "none") 
+ggsave(filename = paste0(savePath,"hist2.png"), ST_meta_plot,
+       width = 8, height = 9, dpi = 1000)
+
+
+
+
+
+#######
+
+
+img <- load.image("D:/Gu_lab/space_expr/data/pubdata/V1_Breast_Cancer_Block_A_Section_1/spatial/tissue_hires_image.png")
+Maskfile <- "D:/Gu_lab/space_expr/data/pubdata/V1_Breast_Cancer_Block_A_Section_1/spatial/Imginit/mask1.txt"
+Mask <- read.table(file = Maskfile,sep = ',')
+Mask <- as.matrix(Mask)
+Mask <- as.cimg(t(Mask))
+img_m <- img
+R(img_m) <-R(img_m)*Mask
+G(img_m) <-G(img_m)*Mask
+B(img_m) <-B(img_m)*Mask
+#plot(img_m)
+img <- img_m
+tmid <- which(R(img)==0&G(img)==0&B(img)==0)
+R(img)[tmid] = 1.0
+G(img)[tmid] = 1.0
+B(img)[tmid] = 1.0
+
+png("D:/Gu_lab/space_expr/data/pubdata/Human_ColorectalCancer/metacell_results/edge_img_.png")
+plot(img)
+dev.off()
+
+#show which gene is important with this
+
+par(mar=c(10,0.5,0.5,0.5))
+cols <- array(getDefaultColors(length(table(Spot_manifest$Walktrap_id))))
+rownames(cols) <- Mc_manifest$mc_names
+
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = UMAP_1, y = UMAP_2, color = MC_name)) + geom_point(size = 1.5) + 
+  scale_colour_manual(values = cols) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/UMAP.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+
+col <- c(cols,"#999999")
+col <- as.array(col)
+rownames(col) <- c(rownames(cols),"Others")
+
+#show one claster
+# C12
+SC_obj_tm <- SC_obj
+tm <- rep("Others",length(Idents(SC_obj_tm)))
+tm[which(Idents(SC_obj_tm)=='MC_12')] <- "MC_12"
+Idents(SC_obj_tm) <- tm
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = imagecol, y = -imagerow, color = Idents(SC_obj_tm))) + geom_point(size = 2) + 
+  scale_colour_manual(values = col) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/C12_dimplot.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+# C15
+SC_obj_tm <- SC_obj
+tm <- rep("Others",length(Idents(SC_obj_tm)))
+tm[which(Idents(SC_obj_tm)=='SD_3')] <- "SD_3"
+tm[which(Idents(SC_obj_tm)=='SD_4')] <- "SD_4"
+tm[which(Idents(SC_obj_tm)=='SD_7')] <- "SD_7"
+Idents(SC_obj_tm) <- tm
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = imagecol, y = -imagerow, color = Idents(SC_obj_tm))) + geom_point(size = 2) + 
+  scale_colour_manual(values = col) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/C_dimplot.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+# C7
+
+SC_obj_tm <- SC_obj
+tm <- rep("Others",length(Idents(SC_obj_tm)))
+tm[which(Idents(SC_obj_tm)=='MC_7')] <- "MC_7"
+Idents(SC_obj_tm) <- tm
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = imagecol, y = -imagerow, color = Idents(SC_obj_tm))) + geom_point(size = 2) + 
+  scale_colour_manual(values = col) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/C7_dimplot.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+#C10
+SC_obj_tm <- SC_obj
+tm <- rep("Others",length(Idents(SC_obj_tm)))
+tm[which(Idents(SC_obj_tm)=='MC_10')] <- "MC_10"
+Idents(SC_obj_tm) <- tm
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = imagecol, y = -imagerow, color = Idents(SC_obj_tm))) + geom_point(size = 2) + 
+  scale_colour_manual(values = col) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/C10_dimplot.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+#C1
+SC_obj_tm <- SC_obj
+tm <- rep("Others",length(Idents(SC_obj_tm)))
+tm[which(Idents(SC_obj_tm)=='MC_1')] <- "MC_1"
+Idents(SC_obj_tm) <- tm
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = imagecol, y = -imagerow, color = Idents(SC_obj_tm))) + geom_point(size = 2) + 
+  scale_colour_manual(values = col) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/C1_dimplot.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+# C4
+SC_obj_tm <- SC_obj
+tm <- rep("Others",length(Idents(SC_obj_tm)))
+tm[which(Idents(SC_obj_tm)=='MC_4')] <- "MC_4"
+Idents(SC_obj_tm) <- tm
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = imagecol, y = -imagerow, color = Idents(SC_obj_tm))) + geom_point(size = 2) + 
+  scale_colour_manual(values = col) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/C4_dimplot.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+# C7
+SC_obj_tm <- SC_obj
+tm <- rep("Others",length(Idents(SC_obj_tm)))
+tm[which(Idents(SC_obj_tm)=='MC_7')] <- "MC_7"
+Idents(SC_obj_tm) <- tm
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = imagecol, y = -imagerow, color = Idents(SC_obj_tm))) + geom_point(size = 2) + 
+  scale_colour_manual(values = col) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/C7_dimplot.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+# C14
+SC_obj_tm <- SC_obj
+tm <- rep("Others",length(Idents(SC_obj_tm)))
+tm[which(Idents(SC_obj_tm)=='MC_14')] <- "MC_14"
+Idents(SC_obj_tm) <- tm
+ST_meta_plot <- ggplot(Spot_manifest, aes(x = imagecol, y = -imagerow, color = Idents(SC_obj_tm))) + geom_point(size = 2) + 
+  scale_colour_manual(values = col) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
+  xlab("x") + ylab("y")
+ggsave(filename = file.path(savePath, "/C14_dimplot.png"), ST_meta_plot,
+       width = 8, height = 7, dpi = 500)
+
+
+#for feature genes enrich
+MD_marker <- readRDS(MD_marker_file)
+library(limma)
+library(ggplot2)
+gsea_matrix <- as.matrix(SC_obj@assays$RNA@data)
+
+#clusterprofile
+library(clusterProfiler)
+library(org.Mm.eg.db)
+MGene <- MD_marker$gene
+tmp <- bitr(MGene, fromType="SYMBOL", 
+            toType="ENTREZID", 
+            OrgDb="org.Mm.eg.db")
+MGene <- as.data.frame(MGene)
+colnames(MGene) <- "gene"
+de_gene_clusters <- merge(tmp,MD_marker,by.x='SYMBOL',by.y='gene')
+head(de_gene_clusters)
+list_de_gene_clusters <- split(de_gene_clusters$ENTREZID, 
+                               de_gene_clusters$cluster)
+library(GSVA)
+library(pheatmap)
+library(GSEABase)
+library(biomaRt)
+go <- enrichGO(gene = de_gene_clusters$ENTREZID, OrgDb = "org.Mm.eg.db", ont="all")
+barplot(go, split="ONTOLOGY")+ facet_grid(ONTOLOGY~., scale="free")
+xx <- compareCluster(list_de_gene_clusters, fun="enrichKEGG", pvalueCutoff=0.05,organism = 'mmu')
+dotplot(xx) 
+#xx_go <- compareCluster(list_de_gene_clusters, fun="enrichGO", pvalueCutoff=0.05,OrgDb = "org.Mm.eg.db", ont="all")
+#dotplot(xx_go)
+
+
+#Feature plot
+
+
+gl <- c('Spink8',
+        'Slc17a6',
+        'Kcne2',
+        'Prkcd',
+        'Crlf1',
+        'Slc6a11',
+        'Ctxn3',
+        'Baiap3',
+        'Cbln4',
+        'Mfge8',
+        'Gpx3',
+        'Fam163b',
+        'Hap1',
+        'Rora',
+        '1110008P14Rik',
+        'Meig1',
+        'Arpp21',
+        'Ndn',
+        'Cabp7',
+        'Adarb1',
+        'Ttr',
+        'Mbp',
+        'Rarres2',
+        'Ptgds',
+        'Lrrc10b',
+        'Dsp',
+        'Mef2c',
+        'Adcy1',
+        'Atp2b1',
+        'Neurod6',
+        '6330403K07Rik',
+        'Amotl1',
+        'Snap25',
+        'Dynlrb2',
+        'Lamp5',
+        'Tbr1',
+        'Ramp3',
+        'Resp18',
+        'C1ql2',
+        'Agt',
+        'Plp1',
+        'Folr1',
+        'Camk2n1',
+        'Cfh',
+        'Camk2a',
+        'Rasgrf2',
+        'Mgp',
+        'Ccdc153',
+        'Mobp',
+        'Ahi1',
+        'Cbln1',
+        'Nptxr',
+        'Arpc5',
+        'Tmem212',
+        'Col1a2',
+        'Hpcal1',
+        'Klk8',
+        'Ddn',
+        'Lypd1',
+        '3110035E14Rik',
+        'Hpca',
+        'Kl',
+        'Icam5',
+        'Neurl1a',
+        'Dclk1',
+        'Mal',
+        'Epop',
+        'Enpp2',
+        'Tcf7l2',
+        'Slc6a13',
+        'Cnp',
+        'Zcchc12',
+        'Sparc',
+        'Hpca')
+SC_obj <- readRDS(SC_obj_file)
+feature_plot(gene_plot = gl,SC_obj, Spot_manifest,savePath)
+
+#gl_SPARK vs gl_MD
+
+gl_SPARK <- readRDS(paste0(savePath,"SPARK.RDS"))
+gl_SPARK@res_mtest
+MD_markers <- readRDS(paste0(savePath,"MD_markers.RDS"))
+#MD_gene <- MD_markers %>% group_by(cluster) %>% top_n(n=100,wt=avg_logFC) 
+MD_gene <- MD_markers %>% top_n(n=100,wt=avg_log2FC) 
+SPARK_gene <- gl_SPARK
+features3 <- SPARK_gene@res_mtest
+features3<- features3[sort(features3$adjusted_pvalue,index.return=TRUE)$ix,]  
+features3 <- rownames(features3)[1:100]
+venn.plot <- venn.diagram(
+  x = list(
+    MD = MD_gene$gene,
+    spark = features3,
+    genelist = VariableFeatures(SC_obj)[1:100]
+  ),
+  filename = paste0(savePath,"gene.jpeg"),
+  cex = 2.5,
+  cat.cex = 2.5,
+  #cat.pos = c(-20, 20,30),
+  ext.line.lty = "dotted",
+  ext.line.lwd = 3,
+  ext.pos = 12,
+  ext.dist = -0.12,
+  ext.length = 0.85
+)
+
+#
+
+
+
+
+
+SD_score <- readRDS(paste0(savePath,"SD_score.RDS"))
+SPARK_score <- readRDS(paste0(savePath,"SPARK_score.RDS"))
+
+x_o <- SD_score
+x_e <- SPARK_score
+score <- c(x_o,x_e)
+lable <- c(rep("SD",length(x_o)),rep("SPARK",length(x_e)))
+library(ggpubr)
+df <- data.frame(score = score, lable = lable)
+
+p <- gghistogram(df,x = "score", add = "mean", rug = TRUE, fill = "lable",palette = c("#00AFBB","#E7B800"),bins = 30)
+ggsave(filename = paste0(savePath,"SDvsSPARK.pdf"),
+       p, width = 6, height = 5, dpi = 150, limitsize = FALSE)
+
+
+#
+gl <- c("TMSB4X","CXCR4","EVL","ARHGEF1","HLA-DQB1","TRBC2","HLA-DQA1","CCL2")
+gl3 <- c("CD81","ASS1","ALDOB","SELENOP","MAT1A","RPL36","A2M","HP")
+gl4 <- c("NBPF15","SLC4A7","HSPB2","INAVA","CHRDL2","VBP1","EML2","TREM2")
+gl2 <- c("MYL9","C3","CYP2E1","AEBP1")
+feature_plot(gene_plot = gl2,SC_obj, Spot_manifest_imgunsup,savePath)
+mc_marker_plot(gl,MC_obj_file,Mc_manifest,Spot_manifest,savePath)
+
+expr_obj <- Read10X(data.dir = exprPath)
+expr_obj <- CreateSeuratObject(counts = expr_obj,min.cells = 3,min.features = 200)
+expr_obj <- NormalizeData(object = expr_obj, normalization.method = "LogNormalize")
+expr_obj <- FindVariableFeatures(expr_obj,selection.method = "vst", nfeatures = 2000)
+expr_obj_scale <- ScaleData(expr_obj, features = VariableFeatures(expr_obj))
+expr_obj_scale <- RunPCA(expr_obj_scale)
+expr_obj_scale <- FindNeighbors(expr_obj_scale)
+feature_plot(gene_plot = gl4,expr_obj, Spot_manifest_imgunsup,savePath)
+saveRDS(expr_obj,file = paste0(savePath,"tm.RDS"))
+
+
+
+#generater the id
+test <- Read10X_h5("D:\\Gu_lab\\space_expr\\data\\Our_data\\HCC-1L\\outs/filtered_feature_bc_matrix.h5")
+lable <- read.csv("D:\\Gu_lab\\space_expr\\data\\Our_data\\HCC-1L\\outs\\metacell_results/tm_clster.csv",header = F)
+
+tmbar <- setdiff(colnames(test),lable$V1)
+tmbar <- as.data.frame(tmbar)
+write.csv(tmbar,"D:\\Gu_lab\\space_expr\\data\\Our_data\\HCC-1L\\outs\\metacell_results/ttt.csv")
+
+
+
+# paper code
+library("mvtnorm")
+library("scatterplot3d")
+x1 <- x2 <- seq(-10, 10, length = 51)
+tm <- dmvnorm(expand.grid(x1, x2),
+              sigma = rbind(c(3, 2), c(2, 3))) 
+#tm[sample(which(tm>0.02),10)] <- tm[sample(which(tm>0.02),10)] + 0.001
+dens <- matrix(tm , ncol = length(x1)) 
+s3d <- scatterplot3d(x1, x2,
+                     seq(min(dens), max(dens), length = length(x1)),
+                     type = "n", grid = FALSE, angle = 70,
+                     zlab = expression(f(x[1], x[2])),
+                     xlab = expression(x[1]), ylab = expression(x[2]),
+                     main = "Diffusion model", highlight.3d = TRUE)
+
+scatterplot3d(x1, x2, dens,
+              type = "n", grid = FALSE, angle = 70,
+              zlab = expression(f(x[1], x[2])),
+              xlab = expression(x[1]), ylab = expression(x[2]),
+              main = "Diffusion model", highlight.3d = TRUE)
+
+
+
+
+
+text(s3d$xyz.convert(-1, 10, 0.07),
+     labels = expression(f(x) == frac(1, sqrt((2 * pi)^n *
+                                                phantom(".") * det(Sigma[X]))) * phantom(".") * exp * {
+                                                  bgroup("(", - scriptstyle(frac(1, 2) * phantom(".")) *
+                                                           (x - mu)^T * Sigma[X]^-1 * (x - mu), ")")}))
+text(s3d$xyz.convert(1.5, 10, 0.05),
+     labels = expression("with" * phantom("m") *
+                           mu == bgroup("(", atop(0, 0), ")") * phantom(".") * "," *
+                           phantom(0) *
+                           {Sigma[X] == bgroup("(", atop(3 * phantom(0) * 2,
+                                                         2 * phantom(0) * 3), ")")}))
+for(i in length(x1):1){
+  s3d$points3d(rep(x1[i], length(x2)), x2, dens[i,], type = "l")
+}
+  
+for(i in length(x2):1){
+  s3d$points3d(x1, rep(x2[i], length(x1)), dens[,i], type = "l")
+}
+  
+
+
+#V2
+
+library(MASS)
+library(plotly)
+library(plot3D)
+
+data(geyser)
+
+View(geyser)#??һ??��????MASS???Ķ?ά?ķֲ????ݣ??ֲ?ֵ??��???Ҹ?ά??ȡֵ???ظ????ʿ??Խ????ܶȷֲ??��?
+
+kd<-with(geyser,kde2d(duration,waiting,n=50))#?????ݽ??к??ܶȹ��ƣ?n???Ե????ܶȹ��ƽ?????ƽ???̶ȣ?????ֵΪһ????ά??list
+
+p2<-plot_ly(x=kd$x,y=kd$y,z=kd$z)%>%add_surface() #ֱ?ӽ??л???
+
+
+p <- persp(kd$x, kd$y, kd$z, theta = 135, phi = 30, col = "green3", scale = FALSE, ltheta = -120, 
+           shade = 0.75, border = "magenta", box = TRUE)
+
+p <- plot_ly(b1image, x = b1image$CNT, y = b1image$Label, type = 'bar', orientation = 'h', 
+             marker = list(color = viridis::viridis_pal(option = "C", direction =1)(max(b1image$Label) - min(b1image$Label) + 5))) %>% 
+  config(displayModeBar = F)
+p
+
+
+#V3
+
+
+z <- kd$z
+y <- kd$y
+x <- kd$x
+
+par(bg = "white")  # ?趨??????ɫΪslategray
+volcano <- as.matrix(z)
+z <-1200 * volcano
+
+z[which(z<0)] <- 0
+
+x <-(1:nrow(z))
+
+y <-(1:ncol(z))
+z0 <- min(z) - 1
+z <- rbind(z0, cbind(z0, z, z0), z0)
+x <- c(min(x) - 1e-10, x, max(x) + 1e-10)
+y <- c(min(y) - 1e-10, y, max(y) + 1e-10)
+fcol <- matrix("green3", nr = nrow(z)-1, nc = ncol(z)-1)
+fcol[ , i2 <- c(1,ncol(fcol))] <- "gray"
+fcol[i1 <- c(1,nrow(fcol)) , ] <- "gray"
+zi<- (volcano[ -1,-1] + volcano[ -1,-50] + volcano[-50,-1] + volcano[-50,-50])/4
+
+pal <- terrain.colors(20)[cut(zi, quantile(zi, seq(0,1, len = 21)), include.lowest = TRUE)]
+
+fcol[-i1,-i2] <- pal
+par(mar=rep(0,4))
+
+persp(x, y, z, theta=120, phi=15, col = fcol, scale = FALSE, shade = 0.4, border = NA,box = F)
+
+
+
+#SNN_diffusion
+
+diffusion_matrix <- readRDS("D:\\Gu_lab\\space_expr\\data\\pubdata\\V1_Adult_Mouse_Brain\\metacell_results\\Diffusion_d0.5_b1/diffusion_matrix.RDS")
+
+SC_obj <- readRDS(paste0(savePath,"expr_obj.RDS"))
+SC_obj <- ScaleData(SC_obj)
+Diff_obj <- SC_obj
+Diff_obj@assays$RNA@scale.data <- diffusion_matrix
+expr_obj_scale <- Diff_obj
+expr_obj_scale <- RunPCA(expr_obj_scale)
+expr_obj_scale <- FindNeighbors(expr_obj_scale)
+snn_result <- FindClusters(expr_obj_scale,resolution = 0.3)
+DimPlot(snn_result)
+id <- as.character(Idents(snn_result))
+pltdat <- cbind(Spot_manifest[, c("imagerow","imagecol")],id)
+colnames(pltdat)[1:2] <- c("y","x")
+pltdat$y = -pltdat$y
+xpand = 0
+ypand = 1
+pal <- colorRampPalette(c("#ADADAD", "#EEB4B4", "#7A378B"))
+cols_ <- array(getDefaultColors(length(table(id))))
+p <- ggplot(pltdat, aes(x = x, y = y, color = id)) + geom_point(size = 3)+ scale_colour_manual(values = cols_) + scale_x_discrete(expand = c(xpand, ypand)) + scale_y_discrete(expand = c(xpand, ypand)) + coord_equal() + 
+  
+  # labs(title = colnames(pd)[igene+2], x = NULL, y = NULL)+
+  theme_bw()
+ggsave(filename = paste0(savePath, "/Diffusion_d0.5_b1/","SNN.png"), p,
+       width = 8, height = 7, dpi = 500)
+
+##show diffusion Iscore
+tm <- read.csv("D:\\Gu_lab\\space_expr\\data\\pubdata\\V1_Adult_Mouse_Brain\\metacell_results/diff.csv",sep = ',')
+
+p <- ggplot(data = tm,aes(x=diffusion,y=modulatrity_score,group = Method,color=Method,shape=Method))+
+  geom_point()+
+  geom_line()+
+  xlab("Diffusion rate")+#??????????
+  ylab("modulatrity_score")+#??????????
+  theme_bw() +#ȥ?����???ɫ
+  theme(panel.grid.major=element_line(colour=NA),
+        panel.background = element_rect(fill = "transparent",colour = NA),
+        plot.background = element_rect(fill = "transparent",colour = NA),
+        panel.grid.minor = element_blank(),#????theme?д???????ȥ?????????ұ??????????߿?
+        #text = element_text(family = "STXihei"),#????????????????ʾ
+        #legend.position = c(.075,.915),#????ͼ????λ?ã?????ͼ?ڲ??????Ͻ?
+        legend.box.background = element_rect(color="black"))#Ϊͼ???????߿???
+ggsave(filename = "D:\\Gu_lab\\space_expr\\data\\pubdata\\V1_Adult_Mouse_Brain\\metacell_results/Diffusion.pdf", p,
+       width = 8, height = 7, dpi = 500)
+
+tm <- read.csv("D:\\Gu_lab\\space_expr\\data\\pubdata\\V1_Adult_Mouse_Brain\\metacell_results/drop.csv")
+#tm$modulatrity_score <- abs(tm$modulatrity_score)
+p <- ggplot(data = tm,aes(x=dropout_rate,y=modulatrity_score,group = Method,color=Method,shape=Method))+
+  geom_point()+
+  geom_line()+
+  xlab("Diffusion rate")+#??????????
+  ylab("Iscore")+#??????????
+  theme_bw() +#ȥ?����???ɫ
+  theme(panel.grid.major=element_line(colour=NA),
+        panel.background = element_rect(fill = "transparent",colour = NA),
+        plot.background = element_rect(fill = "transparent",colour = NA),
+        panel.grid.minor = element_blank(),#????theme?д???????ȥ?????????ұ??????????߿?
+        #text = element_text(family = "STXihei"),#????????????????ʾ
+        #legend.position = c(.075,.915),#????ͼ????λ?ã?????ͼ?ڲ??????Ͻ?
+        legend.box.background = element_rect(color="black"))#Ϊͼ???????߿???
+ggsave(filename = "D:\\Gu_lab\\space_expr\\data\\pubdata\\V1_Adult_Mouse_Brain\\metacell_results/Dropout.pdf", p,
+       width = 8, height = 7, dpi = 500)
+
+
+tm <- read.csv("D:\\Gu_lab\\space_expr\\data\\pubdata\\V1_Adult_Mouse_Brain\\metacell_results/KL_dropout.csv")
+colnames(tm) <- c("gene_name","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9")
+tm <- tm[,1:9]
+testdata <- melt(tm,measure.vars = c("0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8"),variable.name = "dropout_rate",value.name = "KL")
+
+
+p <- ggplot(testdata, aes(x=dropout_rate, y=KL, fill=dropout_rate)) + 
+  #geom_boxplot(alpha=1) +
+  geom_violin(width = 1.4) +
+  geom_boxplot(width=0.1, color="grey", alpha=0.3) +
+  scale_fill_viridis(discrete = TRUE, alpha=0.8)+
+  theme(legend.position="none",
+        panel.grid.major=element_line(colour=NA),
+        panel.background = element_rect(fill = "transparent",colour = NA),
+        plot.background = element_rect(fill = "transparent",colour = NA),
+        panel.grid.minor = element_blank()#????theme?д???????ȥ?????????ұ??????????߿?
+        #text = element_text(family = "STXihei"),#????????????????ʾ
+        #legend.position = c(.075,.915),#????ͼ????λ?ã?????ͼ?ڲ???????
+        )+theme_bw() + ylab("Recover rate")
+  
+ggsave(filename = "D:\\Gu_lab\\space_expr\\data\\pubdata\\V1_Adult_Mouse_Brain\\metacell_results/Dropout_KL.pdf", p,
+       width = 8, height = 7, dpi = 500)
+
+
+
+
+
+###gene enhancement
+
+
+
+centre = 1
+broad = 4
+spaceFile
+Maskfile
+imagefile
+spot_r_min = 12
+img_import = 1
+spot_r_max = 20
+Step = 10
+
+enrichment_score = TRUE
+cluster_num = 50
+geneenrichment = T
+genelist = NULL
+
+d <- c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9)
+
+#Diffusion
+for(iddd in 1:length(d)){
+  
+  diffusion_rate = d[iddd]
+  savePath_ <- paste0(savePath,"Diffusion","_d",diffusion_rate,"_b",broad,"/")
+  diffusion_matrix <- readRDS(paste0(savePath_,"diffusion_matrix.RDS"))
+  #Diff_obj <- SC_obj
+  #colnames(diffusion_matrix) <- colnames(expr_matrix)
+  colnames(diffusion_matrix) <- ST_filter_str(colnames(diffusion_matrix),'-')
+  TPM <- as.matrix(diffusion_matrix)
+  TPM <- as(TPM, "sparseMatrix")
+  Diff_obj <- CreateSeuratObject(diffusion_matrix)
+  label <- readRDS(paste0(savePath,"McRFlabel.RDS"))
+  expr_obj_scale <- Diff_obj
+  expr_obj_scale <- NormalizeData(expr_obj_scale)
+  #expr_obj_scale <- FindVariableFeatures(expr_obj_scale)
+  expr_obj_scale <- ScaleData(expr_obj_scale)
+  expr_obj_scale <- RunPCA(expr_obj_scale,features = rownames(expr_obj_scale))
+  expr_obj_scale <- FindNeighbors(expr_obj_scale)
+  cellcorr <- as.matrix(expr_obj_scale@graphs$RNA_snn)
+  colnames(cellcorr) <- ST_filter_str(colnames(cellcorr),'-')
+  rownames(cellcorr) <- ST_filter_str(rownames(cellcorr),'-')
+  #expr_data <- as.matrix(expr_obj_scale@assays$RNA@data)
+  expr_data <- expr_obj_scale@assays$RNA@scale.data
+  Spot_space <- read.csv(file = spaceFile,header = F)
+  sel.cols <- c("barcode","tissue", "row", "col", "imagerow", "imagecol")
+  colnames(Spot_space) <- sel.cols
+  Spot_space$barcode <- ST_filter_str(Spot_space$barcode,'-')
+  colnames(expr_obj_scale@assays$RNA@scale.data) <- ST_filter_str(colnames(expr_obj_scale@assays$RNA@scale.data),'-')
+  Spot_space <- Spot_space[which(Spot_space$barcode%in%colnames(expr_obj_scale@assays$RNA@scale.data)),]
+  Spot_manifest <- Spot_space
+  
+  #gene_plot
+  if(geneenrichment){
+    if(is.null(genelist)){
+      genelist = c('Spink8',
+                   'Slc17a6',
+                   'Kcne2',
+                   'Prkcd',
+                   'Crlf1',
+                   'Slc6a11',
+                   'Ctxn3',
+                   'Baiap3',
+                   'Cbln4',
+                   'Mfge8',
+                   'Gpx3',
+                   'Fam163b',
+                   'Hap1',
+                   'Rora',
+                   '1110008P14Rik',
+                   'Meig1',
+                   'Arpp21',
+                   'Ndn',
+                   'Cabp7',
+                   'Adarb1',
+                   'Ttr',
+                   'Mbp',
+                   'Rarres2',
+                   'Ptgds',
+                   'Lrrc10b',
+                   'Dsp',
+                   'Mef2c',
+                   'Adcy1',
+                   'Atp2b1',
+                   'Neurod6',
+                   '6330403K07Rik',
+                   'Amotl1',
+                   'Snap25',
+                   'Dynlrb2',
+                   'Lamp5',
+                   'Tbr1',
+                   'Ramp3',
+                   'Resp18',
+                   'C1ql2',
+                   'Agt',
+                   'Plp1',
+                   'Folr1',
+                   'Camk2n1',
+                   'Cfh',
+                   'Camk2a',
+                   'Rasgrf2',
+                   'Mgp',
+                   'Ccdc153',
+                   'Mobp',
+                   'Ahi1',
+                   'Cbln1',
+                   'Nptxr',
+                   'Arpc5',
+                   'Tmem212',
+                   'Col1a2',
+                   'Hpcal1',
+                   'Klk8',
+                   'Ddn',
+                   'Lypd1',
+                   '3110035E14Rik',
+                   'Hpca',
+                   'Kl',
+                   'Icam5',
+                   'Neurl1a',
+                   'Dclk1',
+                   'Mal',
+                   'Epop',
+                   'Enpp2',
+                   'Tcf7l2',
+                   'Slc6a13',
+                   'Cnp',
+                   'Zcchc12',
+                   'Sparc')
+    }
+    
+    genelist <- intersect(rownames(expr_obj_scale),genelist)
+    Plot_all_resnet(SC_obj,
+                    netfile = paste0(savePath_,"ST_imgunsupnet.RDS"),
+                    Diff_obj = expr_obj_scale,
+                    Spot_manifest,
+                    savePath_,
+                    gene_name_list = genelist,
+                    gene_plot = T)
+    
+  }
+}
+
+
+
+
+#Dropout
+
+spot_r_min = 12
+img_import = 1
+spot_r_max = 20
+Step = 10
+enrichment_score = TRUE
+netfile
+cluster_num = 50
+geneenrichment = T
+#genelist = NULL
+  
+
+#Diffusion
+for(iddd in 1:length(d)){
+  dropout_rate  = d[iddd]
+  savePath_ <- paste0(savePath,"dropout","_d",dropout_rate,"/")
+  #saveRDS(dropout_matrix,paste0(savePath_,"dropout_matrix.RDS"))
+  dropout_matrix <- readRDS(paste0(savePath_,"dropout_matrix.RDS"))
+  colnames(dropout_matrix) <- ST_filter_str(colnames(dropout_matrix),'-')
+  Diff_obj <- CreateSeuratObject(dropout_matrix)
+  #RenameCells(Diff_obj,new.names = colnames(diffusion_matrix))
+  
+  Diff_obj@assays$RNA@scale.data <- dropout_matrix
+  label <- readRDS(paste0(savePath,"McRFlabel.RDS"))
+  expr_obj_scale <- Diff_obj
+  expr_obj_scale <- NormalizeData(expr_obj_scale)
+  #expr_obj_scale <- FindVariableFeatures(expr_obj_scale)
+  expr_obj_scale <- ScaleData(expr_obj_scale)
+  expr_obj_scale <- RunPCA(expr_obj_scale,features = rownames(expr_obj_scale))
+  expr_obj_scale <- FindNeighbors(expr_obj_scale)
+  cellcorr <- as.matrix(expr_obj_scale@graphs$RNA_snn)
+  colnames(cellcorr) <- ST_filter_str(colnames(cellcorr),'-')
+  rownames(cellcorr) <- ST_filter_str(rownames(cellcorr),'-')
+  #expr_data <- as.matrix(expr_obj_scale@assays$RNA@data)
+  expr_data <- expr_obj_scale@assays$RNA@scale.data
+  Spot_space <- read.csv(file = spaceFile,header = F)
+  sel.cols <- c("barcode","tissue", "row", "col", "imagerow", "imagecol")
+  colnames(Spot_space) <- sel.cols
+  Spot_space$barcode <- ST_filter_str(Spot_space$barcode,'-')
+  colnames(expr_obj_scale@assays$RNA@scale.data) <- ST_filter_str(colnames(expr_obj_scale@assays$RNA@scale.data),'-')
+  Spot_space <- Spot_space[which(Spot_space$barcode%in%colnames(expr_obj_scale@assays$RNA@scale.data)),]
+  Spot_manifest <- Spot_space
+  #gene_plot
+  if(geneenrichment){
+    if(is.null(genelist)){
+      genelist = c('Spink8',
+                   'Slc17a6',
+                   'Kcne2',
+                   'Prkcd',
+                   'Crlf1',
+                   'Slc6a11',
+                   'Ctxn3',
+                   'Baiap3',
+                   'Cbln4',
+                   'Mfge8',
+                   'Gpx3',
+                   'Fam163b',
+                   'Hap1',
+                   'Rora',
+                   '1110008P14Rik',
+                   'Meig1',
+                   'Arpp21',
+                   'Ndn',
+                   'Cabp7',
+                   'Adarb1',
+                   'Ttr',
+                   'Mbp',
+                   'Rarres2',
+                   'Ptgds',
+                   'Lrrc10b',
+                   'Dsp',
+                   'Mef2c',
+                   'Adcy1',
+                   'Atp2b1',
+                   'Neurod6',
+                   '6330403K07Rik',
+                   'Amotl1',
+                   'Snap25',
+                   'Dynlrb2',
+                   'Lamp5',
+                   'Tbr1',
+                   'Ramp3',
+                   'Resp18',
+                   'C1ql2',
+                   'Agt',
+                   'Plp1',
+                   'Folr1',
+                   'Camk2n1',
+                   'Cfh',
+                   'Camk2a',
+                   'Rasgrf2',
+                   'Mgp',
+                   'Ccdc153',
+                   'Mobp',
+                   'Ahi1',
+                   'Cbln1',
+                   'Nptxr',
+                   'Arpc5',
+                   'Tmem212',
+                   'Col1a2',
+                   'Hpcal1',
+                   'Klk8',
+                   'Ddn',
+                   'Lypd1',
+                   '3110035E14Rik',
+                   'Hpca',
+                   'Kl',
+                   'Icam5',
+                   'Neurl1a',
+                   'Dclk1',
+                   'Mal',
+                   'Epop',
+                   'Enpp2',
+                   'Tcf7l2',
+                   'Slc6a13',
+                   'Cnp',
+                   'Zcchc12',
+                   'Sparc')
+    }
+    genelist <- intersect(genelist,rownames(expr_obj_scale))
+    Plot_all_resnet(SC_obj,
+                    netfile = paste0(savePath_,"ST_imgunsupnet.RDS"),
+                    Diff_obj = expr_obj_scale,
+                    Spot_manifest,
+                    savePath_,
+                    gene_name_list = genelist,
+                    gene_plot = T)
+    
+  }
+}
+
+

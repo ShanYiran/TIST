@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1642949512090.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "5DDBFE3A",
+    "lastKnownWriteTime" : 1642950295,
+    "last_content_update" : 1642950295624,
+    "path" : "D:/Gu_lab/space_expr/code/TIST/TIST/TIST/R/Meta_ST_img.R",
+    "project_path" : "R/Meta_ST_img.R",
+    "properties" : {
+        "cursorPosition" : "8,29",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 8,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
