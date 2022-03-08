@@ -55,7 +55,7 @@ Meta_St_img_unsupervised <- function(Maskfile,
   #image_info(img)
   Mask <- read.table(file = Maskfile,sep = ',')
   Mask <- as.matrix(Mask)
-  Mask <- as.cimg(t(Mask))
+  Mask <- as.cimg(Mask)
   img_m <- img
   R(img_m) <-R(img_m)*Mask
   G(img_m) <-G(img_m)*Mask
