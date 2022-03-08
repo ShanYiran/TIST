@@ -15,7 +15,7 @@ Meta_expr_matrix <- function(exprPath,
                              Spot_manifest,
                              savePath,
                              imagefile,
-                             merge_method = "mean",
+                             merge_method = "max",
                              method = "Walktrap_id"){
   expr_obj <- Read10X(data.dir = exprPath)
   expr_obj <- CreateSeuratObject(counts = expr_obj,min.cells = 3,min.features = 200)
@@ -84,7 +84,7 @@ Meta_expr_matrix <- function(exprPath,
   #image_info(img)
   Mask <- read.table(file = Maskfile,sep = ',')
   Mask <- as.matrix(Mask)
-  Mask <- as.cimg(t(Mask))
+  Mask <- as.cimg((Mask))
   img_m <- img
   R(img_m) <-R(img_m)*Mask
   G(img_m) <-G(img_m)*Mask
