@@ -27,9 +27,9 @@ SpaceDiffGene <- function(SC_obj,
                           Mc_name,
                           SPARK_file,
                           MC_ident_file = NULL,
-                          DEgeneplot = T,
+                          DEgeneplot = F,
                           Score_show = T,
-                          spark_methods = "SPARKX",
+                          spark_methods = "SPARK",
                           netfile = NULL){
   if(methods=="walktrap"){
     Idents(SC_obj) <- Spot_manifest$Walktrap_id
