@@ -59,7 +59,7 @@ Sequencing-based spatial transcriptomics (ST) is an emerging technique to study 
 Except the transcriptomic data, the technique usually generates matched histopathological images for the same tissue sample.  The image data are of high spatial continuity and resolution, which can provide complementary cellular phenotypical information with the noisy ST data.
 
 Here, we propose a novel ST data analysis method called TIST (Transcriptome and histopathological Image integrative analysis for Spatial Transcriptomics) by integrating the information from the sequencing-based ST data and the histopathological images. TIST uses Markov random field to learn the macroscopic cellular features from histopathological images, and devises a random-walk-based strategy to integrate the extracted image features, the transcriptomic features and the location information for spatial cluster (SC) identification and gene expression enhancement. 
-The workflow of  `TIST` 展示如下：
+The workflow of TIST is as follows：
 ![TIST](https://user-images.githubusercontent.com/20694388/158058718-dbccdbe4-ad86-4214-8650-5c4c0792cb60.png)
 
 
@@ -81,9 +81,9 @@ devtools::install_github("ShanYiran/TIST")
 ```
 <span style="color:red">**Hint**</span>: 
 
+Note:
 1) A dependent package `NNLM` was removed from the CRAN repository recently, so an error about it may be reported during the installation. 
 If so, you can install a formerly available version manually from its [archive](https://cran.r-project.org/src/contrib/Archive/NNLM/).
-
 
 
 ## Loading
@@ -120,7 +120,6 @@ to understand the workflow of `TIST`.
 
 ```{r eval=FALSE}
 library(TIST)
-
 #The address where the Mask file is stored. You can use no mask to generate an all 1 matrix. The more recommended approach is generate this mask file use our python code in this package.
 Maskfile <- "./data/V1_Adult_Mouse_Brain/spatial/Imginit/mask1.txt"
 #The address where the Image file is stored. 
@@ -134,7 +133,7 @@ exprPath = "./data/V1_Adult_Mouse_Brain/filtered_feature_bc_matrix/"
 #The scale to map the spots coordinate in spaceFile with image.
 sacle_score <- 0.17011142
 
-#run Meta_St_img_unsupervised
+#Run Meta_St_img_unsupervised
 Spot_manifest_imgunsup <- Meta_St_img_unsupervised(Maskfile = Maskfile,
                                                      imagefile = imagefile,
                                                      spaceFile = spaceFile,
@@ -147,13 +146,13 @@ Spot_manifest_imgunsup <- Meta_St_img_unsupervised(Maskfile = Maskfile,
 
 Running the `Meta_St_img_unsupervised` script will generate some files/folders as below:
 
-1. **Spot_manifest_imgunsup.csv** : 每个样本的分类标签信息.
-2. **ST_imgunsupnet.RDS** : 用于下游分析的多模态网络.
-3. **McRFlabel.RDS** : 图像初始化标签结果.
-4. **expr_obj.RDS** : 表达信息的seurat类型数据
-5. **ST_meta_imgunsup_plot.png** ： 聚类可视化图
+1. **Spot_manifest_imgunsup.csv** : Cluster labels of each sample.
+2. **ST_imgunsupnet.RDS** : The multi-feature network integrating histological and transcriptomic features: TIST-net.
+3. **McRFlabel.RDS** : Initiation labels of histopathological images.
+4. **expr_obj.RDS** : Expression data in Seurat format.
+5. **ST_meta_imgunsup_plot.png** ： Visualized results of clustering.
 
-方法接下来整合一个cluster内的所有spot，得到整合后的meta 表达矩阵，你可以执行 Meta_expr_matrix
+We then integrate all spots within one cluster, and obtain a meta expression matrix in Meta_expr_matrix.
 
 ```{r eval=FALSE}
 Mc_manifest <- Meta_expr_matrix(exprPath = exprPath,Spot_manifest = Spot_manifest_imgunsup,
@@ -162,26 +161,26 @@ Mc_manifest <- Meta_expr_matrix(exprPath = exprPath,Spot_manifest = Spot_manifes
 ```			
 Running the `Meta_expr_matrix` script will generate some files as below:
 
-1. **Mc_obj.RDS** : 整合后的meta 表达seurat数据.
-2. **Mc_manifest** : 用于下游分析的多模态网络.
-3. **MC_idents.RDS** : 图像初始化标签结果.
-4. **expr_obj.RDS** : 表达信息的seurat类型数据
+1. **Mc_obj.RDS** : Integrative meta expression data in Seurat format.
+2. **Mc_manifest** : TIST-net for downstream analysis.
+3. **MC_idents.RDS** : Initiation labels of histopathological images.
+4. **expr_obj.RDS** : Expression data in Seurat format.
 
-接下来你可以进行下游分析获取空间差异基因，我们提供了和SPARK方法的对比方法
+Downstream analysis could be achieved to identify spatially differentially expressed genes (SDE genes). We listed the comparison between TIST and a popular SDE genes detection method named SPARK.
 
 ```{r eval=FALSE}
 Spark_methods(exprPath,
 			  spaceFile,
 			  savePath)
-#基因表达信息的数据路径
+#Saving path of gene expression data
 SC_obj_file <- paste0(savePath,"expr_obj.RDS")
-#聚类表达信息数据路径，用于展示基因表达类内相似性
+#Saving path of clustering results to show the similarity within clusters of expression data.
 MC_obj_file <- paste0(savePath,"Mc_obj.RDS")
-#多模态网络数据
+#TIST information
 netfile <- paste0(savePath,"ST_imgunsupnet.RDS")
 SPARK_file <- paste0(savePath,"SPARK.rds")
 mc_marker_plot(gl = NULL,MC_obj_file,Mc_manifest,Spot_manifest_imgunsup,savePath)
-#表达信息的seurat类型数据
+#Expression data in Seurat format
 SC_obj <- readRDS(SC_obj_file)
 SpaceDiffGene(SC_obj = SC_obj,
                 Spot_manifest= Spot_manifest_imgunsup,
@@ -197,8 +196,8 @@ SpaceDiffGene(SC_obj = SC_obj,
 ```
 Running the `SpaceDiffGene` script will generate some files as below:
 
-1. **TIST_markers.csv** : 差异表达基因结果文件.
-2. **TIST_markers.RDS** : 差异表达基因结果文件.
+1. **TIST_markers.csv** : Spatially differentially expressed genes identified by TIST in .csv format.
+2. **TIST_markers.RDS** : Spatially differentially expressed genes identified by TIST in .RDS format.
 
 
 
