@@ -13,9 +13,6 @@ Spark_methods(exprPath, spaceFile, savePath)
 
 \item{savePath}{The address where the results stored.}
 }
-\value{
-
-}
 \description{
 Title
 }

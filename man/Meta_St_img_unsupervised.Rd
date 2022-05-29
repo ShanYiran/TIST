@@ -5,7 +5,7 @@
 \title{Title}
 \usage{
 Meta_St_img_unsupervised(
-  Maskfile = NULL,
+  Maskfile,
   imagefile,
   exprPath,
   SC_obj = NULL,

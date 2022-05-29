@@ -9,7 +9,7 @@ Meta_expr_matrix(
   Spot_manifest,
   savePath,
   imagefile,
-  merge_method = "mean",
+  merge_method = "max",
   method = "Walktrap_id"
 )
 }

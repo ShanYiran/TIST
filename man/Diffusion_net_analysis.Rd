@@ -18,6 +18,7 @@ Diffusion_net_analysis(
   spot_r_max = 20,
   Step = 10,
   diffusion_rate = 0.1,
+  enrichment_score = TRUE,
   netfile,
   cluster_num = 50,
   geneenrichment = F,

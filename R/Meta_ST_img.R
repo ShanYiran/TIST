@@ -365,6 +365,9 @@ Meta_St_img_unsupervised <- function(Maskfile,
 
     Spot_manifest$Walktrap_id <- as.character(Spot_manifest$Walktrap_id)
   }
+
+  saveRDS(expr_obj_scale,file = paste0(savePath,"expr_obj.RDS"))
+
   saveRDS(Spot_manifest,file = paste0(savePath,"Spot_manifest_imgunsup.RDS"))
   write.csv(Spot_manifest,file = paste0(savePath,"Spot_manifest_imgunsup.csv"))
   return(Spot_manifest)

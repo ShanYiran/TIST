@@ -8,16 +8,15 @@ SpaceDiffGene(
   SC_obj,
   Spot_manifest,
   savePath,
-  MC_obj_file,
-  Mc_manifest,
+  MC_obj_file = NULL,
+  Mc_manifest = NULL,
   Mc_pair_SC,
   methods = "walktrap",
-  Mc_name,
   SPARK_file,
   MC_ident_file = NULL,
-  DEgeneplot = T,
+  DEgeneplot = F,
   Score_show = T,
-  spark_methods = "SPARKX",
+  spark_methods = "SPARK",
   netfile = NULL
 )
 }
@@ -35,8 +34,6 @@ SpaceDiffGene(
 \item{Mc_pair_SC}{Mc_pair_SC}
 
 \item{methods}{TIST network method is "Walktrap_id"}
-
-\item{Mc_name}{Mc_name}
 
 \item{SPARK_file}{SPARK_file generate by SPARK}
 

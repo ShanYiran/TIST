@@ -7,7 +7,6 @@
 #' @param Mc_manifest Mc_manifest
 #' @param Mc_pair_SC Mc_pair_SC
 #' @param methods TIST network method is "Walktrap_id"
-#' @param Mc_name Mc_name
 #' @param SPARK_file SPARK_file generate by SPARK
 #' @param MC_ident_file MC_ident_file
 #' @param DEgeneplot DEgeneplot
@@ -20,11 +19,10 @@
 SpaceDiffGene <- function(SC_obj,
                           Spot_manifest,
                           savePath,
-                          MC_obj_file,
-                          Mc_manifest,
+                          MC_obj_file=NULL,
+                          Mc_manifest=NULL,
                           Mc_pair_SC,
                           methods= "walktrap",
-                          Mc_name,
                           SPARK_file,
                           MC_ident_file = NULL,
                           DEgeneplot = F,
@@ -34,10 +32,13 @@ SpaceDiffGene <- function(SC_obj,
   if(methods=="walktrap"){
     Idents(SC_obj) <- Spot_manifest$Walktrap_id
   }
-  MC_obj <- readRDS(MC_obj_file)
-  mc_matrix <- MC_obj@assays$RNA@scale.data
+  if(is.null(MC_obj_file)==F){
+    MC_obj <- readRDS(MC_obj_file)
+    mc_matrix <- MC_obj@assays$RNA@scale.data
+  }
   MD_markers <- FindAllMarkers(SC_obj,features = rownames(SC_obj))
-  saveRDS(MD_markers,file = paste0(savePath,"MD_markers.RDS"))
+  saveRDS(MD_markers,file = paste0(savePath,"TIST_markers.RDS"))
+  write.csv(MD_markers,file = paste0(savePath,"TIST_markers.csv"))
   #MDMarkers gene vs high var genes
   #MD_gene <- MD_markers %>% group_by(cluster) %>% top_n(n=30,wt=avg_logFC)
   #MD_gene <- MD_markers[abs(MD_markers$avg_logFC)>=1,]
