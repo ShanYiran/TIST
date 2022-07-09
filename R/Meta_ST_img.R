@@ -189,8 +189,15 @@ Meta_St_img_unsupervised <- function(Maskfile,
   tm_matrix <- as.matrix(label)
   tm_matrix_org <- as.matrix(im)
 
-  col <- array(c("#f5f5f5",getDefaultColors(n = 400)))
-  rownames(col) <- c(0,1:400)
+  if(!is.null(colors)){
+    col <- colors
+    rownames(col) <- c(1:length(colors))
+  }
+  else{
+    col <- array(c("#f5f5f5",getDefaultColors(n = 400)))
+    rownames(col) <- c(0,1:400)
+  }
+
   len <- length(colnames(cellcorr))
 
   sample_id <- which(cellcorr!=0)
