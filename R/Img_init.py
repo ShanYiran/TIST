@@ -139,7 +139,7 @@ def image_init(image_path, barcode_path,
     mask1 = mask1.astype(bool)
     # io.imshow(mask1)
     np.save(save_path + "mask1.npy", mask1)
-    np.savetxt(save_path + "mask1.txt", mask1, fmt="%d", delimiter=",")
+    np.savetxt(save_path + "mask1.txt", mask1.T, fmt="%d", delimiter=",")
     # draw red line on org img
     fig, ax_arr = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 10))
     ax1, ax2 = ax_arr.ravel()
@@ -164,4 +164,3 @@ mask_ = image_init(image_path = "D:/Gu_lab/space_expr/data/pubdata/Human_Ovarian
            save_path = "D:/Gu_lab/space_expr/data/pubdata/Human_OvarianCancer/spatial/Imginit/",
            tissue_hires_scalef = 0.08250825,
            dx = 260*0.08250825,dy = 260*0.08250825,rgb_score = -1)
- 
