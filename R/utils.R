@@ -75,8 +75,8 @@ getDefaultColors <- function(n = NULL, type = 1){
       colors <- colors[1:n]
     }else{
       step <- 16777200 %/% (n - length(colors)) - 2
-      add.colors <- paste0("#", as.hexmode(seq(from = sample(1:step, 1),
-                                               by = step, length.out = (n-length(colors)))))
+      add.colors <- paste0("#", as.character(x = as.hexmode(seq(from = sample(1:step, 1),
+                                                             by = step, length.out = (n-length(colors)))), width = 6))
       colors <- c(colors, add.colors)
     }
   }
@@ -99,8 +99,8 @@ getColors <- function(n){
                 "#90353b", "#674c2a", "#1B9E77", "#c5383c", "#0081d1",
                 "#ffd900", "#502e71", "#c8b693", "#aed688", "#f6a97a",
                 "#c6a5cc", "#798234", "#6b42c8", "#cf4c8b", "#666666",
-                "#feb308", "#ff1a1a", "#1aff1a", "#1a1aff", "#ffff1a") 
-    
+                "#feb308", "#ff1a1a", "#1aff1a", "#1a1aff", "#ffff1a")
+
   }
   return(colors)
 }
