@@ -75,7 +75,7 @@ getDefaultColors <- function(n = NULL, type = 1){
       colors <- colors[1:n]
     }else{
       step <- 16777200 %/% (n - length(colors)) - 2
-      add.colors <- paste0("#", as.character(x = as.hexmode(seq(from = sample(1:step, 1),
+      add.colors <- paste0("#", format(x = as.hexmode(seq(from = sample(1:step, 1),
                                                              by = step, length.out = (n-length(colors)))), width = 6))
       colors <- c(colors, add.colors)
     }
