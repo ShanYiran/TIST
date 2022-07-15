@@ -80,35 +80,6 @@ Meta_expr_matrix <- function(exprPath,
   ggsave(filename = paste0(savePath, "/ST_meta_with_ann.pdf"), ST_meta_plot_tm,
          width = 8, height = 7, dpi = 500)
 
-  img <- load.image(imagefile)
-  #image_info(img)
-  Mask <- read.table(file = Maskfile,sep = ',')
-  Mask <- as.matrix(Mask)
-  Mask <- as.cimg((Mask))
-  img_m <- img
-  R(img_m) <-R(img_m)*Mask
-  G(img_m) <-G(img_m)*Mask
-  B(img_m) <-B(img_m)*Mask
-  plot(img_m)
-  img_org <- img_m
-  png(file =paste0(savePath,"2Dmap_imgunsup_high.png"),width = 1500,height = 1500)
-  plot(img_org)
-  for(i in 1:length(table(Spot_manifest$mc))){
-    tname = names(table(Spot_manifest$mc))[i]
-    tcol = as.character(cols[tname][[1]])
-    with(Spot_manifest[which(Spot_manifest$mc==tname),],points(imagecol*sacle_score,imagerow*sacle_score,col=tcol,cex = 1.5))
-  }
-  dev.off()
-  png(file =paste0(savePath,"2Dmap_imgunsup_low.png"),width = 1000,height = 1000)
-  plot(img_org)
-  for(i in 1:length(table(Spot_manifest$mc))){
-    tname = names(table(Spot_manifest$mc))[i]
-    tcol = as.character(cols[tname][[1]])
-    with(Spot_manifest[which(Spot_manifest$mc==tname),],points(imagecol*sacle_score,imagerow*sacle_score,col=tcol,cex = 1.5))
-  }
-  dev.off()
-
-
   return(Mc_manifest)
 
 }

@@ -27,7 +27,7 @@ SpaceDiffGene <- function(SC_obj,
                           MC_ident_file = NULL,
                           DEgeneplot = F,
                           Score_show = T,
-                          spark_methods = "SPARK",
+                          spark_methods = NULL,
                           netfile = NULL){
   if(methods=="walktrap"){
     Idents(SC_obj) <- Spot_manifest$Walktrap_id
@@ -43,72 +43,73 @@ SpaceDiffGene <- function(SC_obj,
   #MD_gene <- MD_markers %>% group_by(cluster) %>% top_n(n=30,wt=avg_logFC)
   #MD_gene <- MD_markers[abs(MD_markers$avg_logFC)>=1,]
   MD_gene <- MD_markers %>% top_n(n=150,wt=avg_log2FC)
-  SPARK_gene <-readRDS(SPARK_file)
-  if(spark_methods=="SPARK"){
-    features3 <- SPARK_gene@res_mtest
-    features3<- features3[sort(features3$adjusted_pvalue,index.return=TRUE)$ix,]
-    #features3<- features3[sort(features3$adjusted_pvalue,index.return=TRUE)$ix,]
-    features3 <- rownames(features3)
-  }
-  if(spark_methods=="SPARKX"){
-    features3 <- SPARK_gene$res_mtest
-    features3 <- features3[sort(features3$adjustedPval,index.return=TRUE)$ix,]
-    #features3<- features3[sort(features3$adjusted_pvalue,index.return=TRUE)$ix,]
-    features3 <- rownames(features3)
-  }
-  venn.plot <- venn.diagram(
-    x = list(
-      MD =unique(MD_gene$gene)[1:100],
-      spark = features3[1:100]
-    ),
-    filename = paste0(savePath,"gene_vs_x.jpeg"),
-    cex = 2.5,
-    cat.cex = 2.5,
-    cat.pos = c(-20, 20),
-    ext.line.lty = "dotted",
-    ext.line.lwd = 3,
-    ext.pos = 12,
-    ext.dist = -0.12,
-    ext.length = 0.85
-  )
-  if(Score_show){
-    SD_score <- c()
-    SPARK_score <- c()
-    SD_gene <- unique(MD_gene$gene)[1:100]
-    Spark_gene <- features3[1:100]
-    ST_net <- readRDS(file = netfile)
-    KNN <- as_adjacency_matrix(ST_net)
-    KNN <- as.matrix(KNN)
-    SC_obj <- ScaleData(SC_obj,features = c(VariableFeatures(SC_obj),SD_gene,Spark_gene))
-    colnames(SC_obj@assays$RNA@scale.data) <- ST_filter_str(colnames(SC_obj@assays$RNA@scale.data),'-')
-    for(i in 1:100){
-      SD_gene_expr <- SC_obj@assays$RNA@scale.data[SD_gene[i],colnames(KNN)]
-      SD_score <- c(SD_score,as.numeric(t(SD_gene_expr)%*%KNN%*%(SD_gene_expr)))
-      SPARK_gene_expr <- SC_obj@assays$RNA@scale.data[Spark_gene[i],colnames(KNN)]
-      SPARK_score <- c(SPARK_score,as.numeric(t(SPARK_gene_expr)%*%KNN%*%(SPARK_gene_expr)))
+  if(!is.null(SPARK_gene)){
+    SPARK_gene <-readRDS(SPARK_file)
+    if(spark_methods=="SPARK"){
+      features3 <- SPARK_gene@res_mtest
+      features3<- features3[sort(features3$adjusted_pvalue,index.return=TRUE)$ix,]
+      #features3<- features3[sort(features3$adjusted_pvalue,index.return=TRUE)$ix,]
+      features3 <- rownames(features3)
     }
-    #SD_score <- (SD_score-min(SD_score))/(max(SD_score)-min(SD_score))
-    #SPARK_score <- (SPARK_score-min(SPARK_score))/(max(SPARK_score)-min(SPARK_score))
-    names(SD_score) <- SD_gene
-    names(SPARK_score) <- Spark_gene
-    saveRDS(SD_score,paste0(savePath,"SD_score.RDS"))
-    saveRDS(SPARK_score,paste0(savePath,"SPARK_score.RDS"))
+    if(spark_methods=="SPARKX"){
+      features3 <- SPARK_gene$res_mtest
+      features3 <- features3[sort(features3$adjustedPval,index.return=TRUE)$ix,]
+      #features3<- features3[sort(features3$adjusted_pvalue,index.return=TRUE)$ix,]
+      features3 <- rownames(features3)
+    }
+    venn.plot <- venn.diagram(
+      x = list(
+        MD =unique(MD_gene$gene)[1:100],
+        spark = features3[1:100]
+      ),
+      filename = paste0(savePath,"gene_vs_x.jpeg"),
+      cex = 2.5,
+      cat.cex = 2.5,
+      cat.pos = c(-20, 20),
+      ext.line.lty = "dotted",
+      ext.line.lwd = 3,
+      ext.pos = 12,
+      ext.dist = -0.12,
+      ext.length = 0.85
+    )
+    if(Score_show){
+      SD_score <- c()
+      SPARK_score <- c()
+      SD_gene <- unique(MD_gene$gene)[1:100]
+      Spark_gene <- features3[1:100]
+      ST_net <- readRDS(file = netfile)
+      KNN <- as_adjacency_matrix(ST_net)
+      KNN <- as.matrix(KNN)
+      SC_obj <- ScaleData(SC_obj,features = c(VariableFeatures(SC_obj),SD_gene,Spark_gene))
+      colnames(SC_obj@assays$RNA@scale.data) <- ST_filter_str(colnames(SC_obj@assays$RNA@scale.data),'-')
+      for(i in 1:100){
+        SD_gene_expr <- SC_obj@assays$RNA@scale.data[SD_gene[i],colnames(KNN)]
+        SD_score <- c(SD_score,as.numeric(t(SD_gene_expr)%*%KNN%*%(SD_gene_expr)))
+        SPARK_gene_expr <- SC_obj@assays$RNA@scale.data[Spark_gene[i],colnames(KNN)]
+        SPARK_score <- c(SPARK_score,as.numeric(t(SPARK_gene_expr)%*%KNN%*%(SPARK_gene_expr)))
+      }
+      #SD_score <- (SD_score-min(SD_score))/(max(SD_score)-min(SD_score))
+      #SPARK_score <- (SPARK_score-min(SPARK_score))/(max(SPARK_score)-min(SPARK_score))
+      names(SD_score) <- SD_gene
+      names(SPARK_score) <- Spark_gene
+      saveRDS(SD_score,paste0(savePath,"SD_score.RDS"))
+      saveRDS(SPARK_score,paste0(savePath,"SPARK_score.RDS"))
 
-    x_o <- SD_score
-    x_e <- SPARK_score
-    score <- c(x_o,x_e)
-    lable <- c(rep("SD",length(x_o)),rep("SPARK",length(x_e)))
+      x_o <- SD_score
+      x_e <- SPARK_score
+      score <- c(x_o,x_e)
+      lable <- c(rep("SD",length(x_o)),rep("SPARK",length(x_e)))
 
-    df <- data.frame(score = score, lable = lable)
+      df <- data.frame(score = score, lable = lable)
 
-    p <- gghistogram(df,x = "score", add = "mean", rug = TRUE, fill = "lable",palette = c("#00AFBB","#E7B800"),bins = 30)
-    ggsave(filename = paste0(savePath,"SDvsSPARK.pdf"),
-           p, width = 6, height = 5, dpi = 150, limitsize = FALSE)
+      p <- gghistogram(df,x = "score", add = "mean", rug = TRUE, fill = "lable",palette = c("#00AFBB","#E7B800"),bins = 30)
+      ggsave(filename = paste0(savePath,"SDvsSPARK.pdf"),
+             p, width = 6, height = 5, dpi = 150, limitsize = FALSE)
 
-    gl <- intersect(SD_gene,Spark_gene)
-    feature_plot(gene_plot = gl,SC_obj, Spot_manifest,savePath,savefilename = "UNI_gene_plot",height = 550,pointsize = 2.5)
-    mc_marker_plot(gl = gl,MC_obj_file,Mc_manifest,Spot_manifest,savePath,savefilename = "UNI_gene_MC_plot")
-
+      gl <- intersect(SD_gene,Spark_gene)
+      feature_plot(gene_plot = gl,SC_obj, Spot_manifest,savePath,savefilename = "UNI_gene_plot",height = 550,pointsize = 2.5)
+      mc_marker_plot(gl = gl,MC_obj_file,Mc_manifest,Spot_manifest,savePath,savefilename = "UNI_gene_MC_plot")
+    }
   }
 
   if(DEgeneplot){
