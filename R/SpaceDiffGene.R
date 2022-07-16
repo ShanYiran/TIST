@@ -23,7 +23,7 @@ SpaceDiffGene <- function(SC_obj,
                           Mc_manifest=NULL,
                           Mc_pair_SC,
                           methods= "walktrap",
-                          SPARK_file,
+                          SPARK_file = NULL,
                           MC_ident_file = NULL,
                           DEgeneplot = F,
                           Score_show = T,
@@ -43,7 +43,7 @@ SpaceDiffGene <- function(SC_obj,
   #MD_gene <- MD_markers %>% group_by(cluster) %>% top_n(n=30,wt=avg_logFC)
   #MD_gene <- MD_markers[abs(MD_markers$avg_logFC)>=1,]
   MD_gene <- MD_markers %>% top_n(n=150,wt=avg_log2FC)
-  if(!is.null(spark_methods)){
+  if(!is.null(SPARK_file)){
     SPARK_gene <-readRDS(SPARK_file)
     if(spark_methods=="SPARK"){
       features3 <- SPARK_gene@res_mtest

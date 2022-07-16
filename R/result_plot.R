@@ -52,11 +52,11 @@ Meta_expr_matrix <- function(exprPath,
   colnames(Meta_matrix) <- mc_names
   rownames(Meta_matrix) <- rownames(expr_obj)
   Mc_obj <- CreateSeuratObject(counts = Meta_matrix)
-  Mc_obj <- NormalizeData(object = Mc_obj, normalization.method = "LogNormalize")
-  feature_num <- length(colnames(Mc_obj))-2
-  Mc_obj <- FindVariableFeatures(Mc_obj,selection.method = "vst", nfeatures = feature_num)
-  Mc_obj <- ScaleData(Mc_obj, features = rownames(Mc_obj))
-  Mc_obj <- RunPCA(Mc_obj,features = VariableFeatures(Mc_obj))
+  #Mc_obj <- NormalizeData(object = Mc_obj, normalization.method = "LogNormalize")
+  #feature_num <- length(colnames(Mc_obj))-2
+  #Mc_obj <- FindVariableFeatures(Mc_obj,selection.method = "vst", nfeatures = feature_num)
+  #Mc_obj <- ScaleData(Mc_obj, features = rownames(Mc_obj))
+  #Mc_obj <- RunPCA(Mc_obj,features = VariableFeatures(Mc_obj))
 
   write.csv(Meta_matrix,file = paste0(savePath,"Meta_matrix.csv"))
   saveRDS(Mc_obj,paste0(savePath,"Mc_obj.RDS"))
@@ -66,19 +66,6 @@ Meta_expr_matrix <- function(exprPath,
 
   saveRDS(Idents(expr_obj),file = paste0(savePath,"MC_idents.RDS"))
   saveRDS(Mc_manifest,file = paste0(savePath,"Mc_manifest.RDS"))
-
-  tm <- data.frame(barcode = ST_filter_str(colnames(expr_obj),'-'),mc= Idents(expr_obj))
-
-  Spot_manifest <- merge(Spot_manifest,tm,Idents(expr_obj),by.x = "barcode",by.y = "barcode")
-  saveRDS(Spot_manifest,paste0(savePath,"Spot_manifest_renameSD.RDS"))
-  cols <- array(getDefaultColors(length(table(Spot_manifest$Walktrap_id))))
-  rownames(cols) <- Mc_manifest$mc_names
-
-  ST_meta_plot_tm <- ggplot(Spot_manifest, aes(x = imagecol, y = -imagerow, color = mc)) + geom_point(size = 2) +
-    scale_colour_manual(values = cols) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
-    xlab("x") + ylab("y")
-  ggsave(filename = paste0(savePath, "/ST_meta_with_ann.pdf"), ST_meta_plot_tm,
-         width = 8, height = 7, dpi = 500)
 
   return(Mc_manifest)
 
