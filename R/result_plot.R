@@ -42,6 +42,7 @@ Meta_expr_matrix <- function(exprPath,
   for( i in 1:length(mc_names)){
     id <- mc_names[i]
     this_expM <- expr_obj@assays$RNA@counts[,which(Idents(expr_obj)==id),drop=F]
+    this_expM <- as.data.frame(this_expM)
     if(merge_method =="mean"){
       Meta_matrix[,i] <- round(rowMeans(this_expM))
     }
