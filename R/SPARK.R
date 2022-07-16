@@ -48,9 +48,7 @@ Spark_methods <- function(exprPath,
   spark <- spark.vc(spark, covariates = NULL, lib_size = spark@lib_size, verbose = T, fit.maxiter = 500)
   spark <- spark.test(spark, check_positive = T, verbose = T)
   saveRDS(spark, file = paste0(savePath,"SPARK.rds"))
-  #head(spark@res_mtest[,c("combined_pvalue","adjusted_pvalue")])
-  #features3 <- spark@res_mtest
-  #features3<- features3[sort(features3$combined_pvalue,index.return=TRUE)$ix,]
+
 }
 
 
