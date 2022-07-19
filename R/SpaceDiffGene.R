@@ -42,7 +42,7 @@ SpaceDiffGene <- function(SC_obj,
   #MDMarkers gene vs high var genes
   #MD_gene <- MD_markers %>% group_by(cluster) %>% top_n(n=30,wt=avg_logFC)
   #MD_gene <- MD_markers[abs(MD_markers$avg_logFC)>=1,]
-  MD_gene <- MD_markers %>% top_n(n=150,wt=avg_log2FC)
+  #MD_gene <- MD_markers %>% top_n(n=150,wt=avg_log2FC)
   if(!is.null(SPARK_file)){
     SPARK_gene <-readRDS(SPARK_file)
     if(spark_methods=="SPARK"){

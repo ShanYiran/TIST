@@ -34,7 +34,9 @@ Spark_methods <- function(exprPath,
   count <- as.matrix(rawcount)
   colnames(count) <- ST_filter_str(colnames(count),'-')
   #Spot_manifest <- Spot_manifest[which(colnames(count)%in%Spot_manifest$barcode),]
-  setorder(setDT(Spot_manifest)[, barcode := colnames(count)], barcode)
+  #setorder(setDT(Spot_manifest)[, barcode := colnames(count)], barcode)
+  tm <- data.frame(barcode = colnames(count))
+  Spot_manifest <- merge(tm,Spot_manifest,x.by = "barcode",y.by = "barcode")
 
   info <- Spot_manifest[,c(3,4)]
   info <- as.data.frame(info)
