@@ -231,17 +231,23 @@ Meta_St_img_unsupervised <- function(Maskfile,
 
     M1 = tm_matrix[(ximgcol-spot_r_min):(ximgcol+spot_r_min),(ximgrow-spot_r_min):(ximgrow+spot_r_min)]
     M2 = tm_matrix[(yimgcol-spot_r_min):(yimgcol+spot_r_min),(yimgrow-spot_r_min):(yimgrow+spot_r_min)]
+    if(min(M1)==max(M1)) next
+    if(min(M2)==max(M2)) next
     M1_v <- hist(as.vector(M1)[which(as.vector(M1)>0)],breaks = seq(0,cluster_num,length.out = cluster_num),plot = F)$counts/(sum( hist(as.vector(M1)[which(as.vector(M1)>0)],breaks = seq(0,cluster_num,length.out = cluster_num),plot = F)$counts))
     M2_v <- hist(as.vector(M2)[which(as.vector(M2)>0)],breaks = seq(0,cluster_num,length.out = cluster_num),plot = F)$counts/(sum( hist(as.vector(M2)[which(as.vector(M2)>0)],breaks = seq(0,cluster_num,length.out = cluster_num),plot = F)$counts))
     weight_2 <-  1-max(min(distance(rbind(M1_v,M2_v),method = 'kullback-leibler',test.na = F,mute.message = T),1))
 
     M1 = tm_matrix_org[(ximgcol-spot_r_max):(ximgcol+spot_r_max),(ximgrow-spot_r_max):(ximgrow+spot_r_max)]
     M2 = tm_matrix_org[(yimgcol-spot_r_max):(yimgcol+spot_r_max),(yimgrow-spot_r_max):(yimgrow+spot_r_max)]
+    if(min(M1)==max(M1)) next
+    if(min(M2)==max(M2)) next
     M1_v <- as.vector(M1)[which(as.vector(M1)>0)]
     M2_v <- as.vector(M2)[which(as.vector(M2)>0)]
     mean_diff_max <- abs(mean(M1_v)-mean(M2_v))*255
     M1 = tm_matrix_org[(ximgcol-spot_r_min):(ximgcol+spot_r_min),(ximgrow-spot_r_min):(ximgrow+spot_r_min)]
     M2 = tm_matrix_org[(yimgcol-spot_r_min):(yimgcol+spot_r_min),(yimgrow-spot_r_min):(yimgrow+spot_r_min)]
+    if(min(M1)==max(M1)) next
+    if(min(M2)==max(M2)) next
     M1_v <- as.vector(M1)[which(as.vector(M1)>0)]
     M2_v <- as.vector(M2)[which(as.vector(M2)>0)]
     mean_diff_min <- abs(mean(M1_v)-mean(M2_v))*255
