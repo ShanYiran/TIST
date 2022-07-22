@@ -257,17 +257,15 @@ Matching_analysis <- function(SC_obj_file,
   mc_marker_plot(gl,MC_obj_file,Mc_manifest,Spot_manifest,savePath)
 }
 
-mc_marker_plot <- function(gl,MC_obj_file,Mc_manifest,Spot_manifest,savePath,savefilename=NULL,TLS =F){
+mc_marker_plot <- function(gl = NULL,MC_obj_file,Mc_manifest,Spot_manifest,savePath,savefilename=NULL){
   MC_obj <- readRDS(MC_obj_file)
+  MC_obj <- ScaleData(MC_obj)
+  rownames(MC_obj@assays$RNA@scale.data) <- toupper(rownames(MC_obj@assays$RNA@scale.data))
+  rownames(MC_obj@assays$RNA@data) <- toupper(rownames(MC_obj@assays$RNA@data))
   mc_expr <- MC_obj@assays$RNA@data
-  #rownames(MC_obj@assays$RNA@scale.data) <- toupper(rownames(MC_obj@assays$RNA@scale.data))
   #rownames(mc_expr) <- toupper(rownames(mc_expr))
   if(is.null(gl)){
     ct.list <- list(
-      "Hepatocytes" = c("HAMP", "CYP1A2", "APOF", "CYP3A4", "C9", "ADH4",
-                        "SLC22A1", "CYP2A6", "HGFAC", "CYP2C8", "CYP2E1", "RDH16",
-                        "SPP2", "UROC1", "AFM", "PCK1", "F9", "CYP4A11",
-                        "SERPINA11", "APOA5", "CYP8B1", "SLC10A1"),
       "Malignancy" = c("SPINK1", "GPC3", "AKR1B10", "TOP2A", "REG3A", "CAP2",
                        "UBE2C", "MDK", "LCN2", "AURKA"),
       "Bile duct cells" = c("KRT19", "KRT7"),
@@ -275,10 +273,7 @@ mc_marker_plot <- function(gl,MC_obj_file,Mc_manifest,Spot_manifest,savePath,sav
       "Fibroblasts" = c("COL1A2", "FAP", "PDPN", "DCN", "COL3A1", "COL6A1", "COL1A1"),
       "T cells" = c("CD3D", "CD3E", "CD3G"),
       "B cells" = c("CD19", "MS4A1", "CD79A"),
-      "NK cells" = c("NCAM1", "KLRF1", "NCR1", "KLRC1"),
-      "Myeloid cells" = c("ITGAX", "CD33", "CEACAM8", "CD68", "CD163"),
-      "TLS" = c("FDCSP","CR2","CXCL13","LTF","CD52","MS4A1","CCL19","LINC00926","LTB","CORO1A","CD79B","TXNIP","CD19","LIMD2","CD37","ARHGAP45","BLK","TMC8","CCL21","PTPN6","ATP2A3","IGHM","SPIB","TMSB4X","CXCR4","NCF1","CD79A","ARHGAP9","DEF6","EVL","TBC1D10C","RASAL3","INPP5D","RNASET2","RASGRP2","TNFRSF13C","RAC2","CD22","ARHGEF1","AC103591.3","TRAF3IP3","HLA-DQB1","CD53","ARHGAP4","TRBC2","POU2AF1","TRAF5","OGA","FCRL3","HLA-DQA1"),
-      "chemokine" = c("CCL2","CCL3","CCL4","CCL5","CCL8","CCL18","CCL19","CCL21","CXCL9","CXCL10","CXCL13","CXCL11"))
+      "NK cells" = c("NCAM1", "KLRF1", "NCR1", "KLRC1"))
     gl <- intersect(rownames(MC_obj@assays$RNA@scale.data),unlist(ct.list))
   }
   gl <- intersect(rownames(MC_obj@assays$RNA@data),gl)
@@ -311,64 +306,6 @@ mc_marker_plot <- function(gl,MC_obj_file,Mc_manifest,Spot_manifest,savePath,sav
     grid.arrange(grobs = pp, ncol = 4)
   }
   dev.off()
-  #TLS
-  if(TLS==T){
-    gl <- c("CCL2","CCL3","CCL4","CCL5","CCL8","CCL18","CCL19","CCL21","CXCL9","CXCL10","CXCL13","CXCL11")
-    #gl <- c("FDCSP","CR2","CXCL13","LTF","CD52","MS4A1","CCL19","LINC00926","LTB","CORO1A","CD79B","TXNIP","CD19","LIMD2","CD37","ARHGAP45","BLK","TMC8","CCL21","PTPN6","ATP2A3","IGHM","SPIB","TMSB4X","CXCR4","NCF1","CD79A","ARHGAP9","DEF6","EVL","TBC1D10C","RASAL3","INPP5D","RNASET2","RASGRP2","TNFRSF13C","RAC2","CD22","ARHGEF1","AC103591.3","TRAF3IP3","HLA-DQB1","CD53","ARHGAP4","TRBC2","POU2AF1","TRAF5","OGA","FCRL3","HLA-DQA1")
-    gl <- intersect(rownames(expr_gl_mc),gl)
-
-    tm_matrix <- expr_gl_mc[gl,]
-
-    TLS_expr <- colSums(tm_matrix)
-
-    TLS_expr_tm <- TLS_expr*0
-    TLS_expr_tm[TLS_expr>=quantile(TLS_expr,0.984)] <- 1
-
-    pltdat <-  cbind.data.frame(Spot_manifest[,c("imagerow","imagecol")], TLS_expr_tm)
-    pal <- colorRampPalette(c("mediumseagreen", "lightyellow2", "deeppink"))
-    colnames(pltdat)[1:2] <- c("y","x")
-    pltdat$y = -pltdat$y
-    png(filename=paste0(savePath,"MC_TLS.png"), width=600, height=500)
-    ggplot(pltdat, aes(x = x, y = y, color = pltdat[, 1 + 2])) + geom_point(size = 2) +
-      # scale_color_gradientn(colours=pal(5))+
-      scale_color_gradientn(colours = pal(5)) + coord_equal() +
-      theme(panel.grid = element_blank(),
-            legend.position = "top",
-            panel.border = element_blank(),
-            plot.title = element_text(hjust = 0.5)) +
-      ggplot_config(base.size = 6)
-    dev.off()
-
-    if(FALSE){
-      Spot_manifest_tm <- Spot_manifest
-      Spot_manifest$mc[which(Spot_manifest$mc%nin%c("SD_7"))] <- "0"
-      col <- array(getDefaultColors(length(table(Spot_manifest$mc))))
-      cols <- as.array(c("#DBDBDB",col[7],col[15]))
-      names(cols) <- c("0","SD_7","15")
-      ST_meta_plot2 <- ggplot(Spot_manifest, aes(x = imagecol, y = -imagerow, color = mc)) + geom_point(size = 2) +
-        scale_colour_manual(values = cols) + scale_x_discrete(expand = c(0.09,0.09)) + scale_y_discrete(expand = c(0.09,0.09)) + coord_equal() +  theme_bw() +
-        xlab("x") + ylab("y")
-      ggsave(filename = file.path(savePath, "/TLS_final.png"), ST_meta_plot2,
-             width = 8, height = 7, dpi = 500)
-    }
-
-    id <-TLS_expr
-    pltdat <- cbind(Spot_manifest[, c("imagerow","imagecol")],id)
-    colnames(pltdat)[1:2] <- c("y","x")
-    pltdat$y = -pltdat$y
-    xpand = 0
-    ypand = 1
-    pal <- colorRampPalette(c("#ADADAD", "#EEB4B4", "#7A378B"))
-    p <- ggplot(pltdat, aes(x = x, y = y, color = id)) + geom_point(size = 3)+ scale_color_gradientn(colours = pal(5)) +scale_x_discrete(expand = c(xpand, ypand)) + scale_y_discrete(expand = c(xpand, ypand)) + coord_equal() +
-
-      # labs(title = colnames(pd)[igene+2], x = NULL, y = NULL)+
-      theme_bw()
-    ggsave(filename = paste0(savePath, "TLS_score.png"), p,
-           width = 8, height = 7, dpi = 500)
-
-
-
-  }
 }
 
 mc_genepair_show <- function(gl1,
@@ -452,14 +389,6 @@ feature_plot <- function(gene_plot, SC_obj, Spot_manifest,savefile,savefilename=
     })
     grid.arrange(grobs = pp, ncol = 4)
   }
-  #pal <- colorRampPalette(c("mediumseagreen", "lightyellow2", "deeppink"))
-  #gpt <- ggplot(pltdat, aes(x = x, y = y, color = pltdat[, 1 + 2])) + geom_point(size = 1) +
-    # scale_color_gradientn(colours=pal(5))+
-  #  scale_color_gradientn(colours = pal(5)) + coord_equal() +
-    # labs(title = colnames(pd)[igene+2], x = NULL, y = NULL)+
-  #  theme_bw()
-  #find space spatially features _Method 3 SpatialDE??use python code??
-  #gpt
   dev.off()
 }
 
